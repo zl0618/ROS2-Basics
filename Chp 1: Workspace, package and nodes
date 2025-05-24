@@ -73,7 +73,7 @@ Make sure you have added the rclpy dependency as that provides all the Python AP
 
 Now, why do we need to rebuild again using colcon build? 
 
-Because when we make changes to the code in the `src/` directory, those changes only exists in your source files - and we need to process and copy them to the `install/` directory where ROS2 actually looks for your executable code. Hence, we have to do colcon build again, or `colcon build --symlink-install`, which prevent you to rebuild every time by creating symbolic links that point back to your original source files.
+Because when we make changes to the code in the `src/` directory, those changes only exists in your source files - and we need to process and copy them to the `install/` directory where ROS2 actually looks for your executable code. Hence, we have to do colcon build again, or `colcon build --symlink-install` (only for python packages), which prevent you to rebuild every time by creating symbolic links that point back to your original source files.
 
 </aside>
 
