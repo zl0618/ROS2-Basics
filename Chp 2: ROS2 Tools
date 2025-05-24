@@ -1,0 +1,87 @@
+# ROS2 Tools
+
+Status: In Progress
+Start Date: May 24, 2025
+Resources: Udemy ROS2 for beginners chapter 4
+
+# List of ROS2 commands
+
+To check out what tools we have, we can type `ros2`  in the cmd prompt. 
+
+The list of tools that you can find should be: 
+
+```bash
+Commands:
+  action     Various action related sub-commands
+  bag        Various rosbag related sub-commands
+  component  Various component related sub-commands
+  control    Various control related sub-commands
+  daemon     Various daemon related sub-commands
+  doctor     Check ROS setup and other potential issues
+  interface  Show information about ROS interfaces
+  launch     Run a launch file
+  lifecycle  Various lifecycle related sub-commands
+  multicast  Various multicast related sub-commands
+  node       Various node related sub-commands
+  param      Various param related sub-commands
+  pkg        Various package related sub-commands
+  run        Run a package specific executable
+  security   Various security related sub-commands
+  service    Various service related sub-commands
+  topic      Various topic related sub-commands
+  wtf        Use `wtf` as alias to `doctor`
+```
+
+Some common tools that we are going to use a lot are: `run`, `node` (which introspect which node is executing at the time). `node list` for all the executing node, and `node info` for more information on the nodes.
+
+![image.png](ROS2%20Tools%201fdda1631051807bbb78f381031e69da/image.png)
+
+NOTE that you cannot have 2 nodes with the same name. 
+
+# Renaming nodes
+
+To solve the problem that nodes cannot have the same name, we rename them. 
+
+```bash
+ros2 run [package name] [executable name] --ros-args -r __node:=[new node name]
+# We basically add arguments after the executable name, and -r stands for remapping
+```
+
+The remapping process applies "static" remapping rules that affect the node for its entire lifetime. When you use commands like **`-r __node:=new_name`**, you're telling the same node executable to start up with a different name rather than creating a copy.
+
+What actually happens is that:
+
+**Single Instance**: You still have one node process running, not two. The node executable remains the same, but its identity changes during initialisation.
+
+**Name Changes Immediately**: Log messages use the new name immediately, and all private names are expanded using the new node name before any other remapping rules are applied.
+
+**Namespace Integration**: If you also specify a namespace change with **`-r __ns:=/new_namespace`**, the node and all its topics/services are created within that namespace
+
+When you run the same node executable in different terminals, you create **separate instances** of that node, not the same node running twice. Each terminal launches its own process with its own memory space.
+
+## Multiple Instances Without Renaming
+
+If you run the same node in different terminals without renaming, you'll have multiple nodes with identical names, which can cause conflicts. For example, running **`ros2 run turtlesim turtlesim_node`** in two terminals creates two separate **`/turtlesim`** nodes competing for the same topics and services.
+
+That’s why we will have to rename it. 
+
+# Rqt and rqt_graph
+
+![image.png](ROS2%20Tools%201fdda1631051807bbb78f381031e69da/image%201.png)
+
+rqt is just a graphical user interface, and rqt_graph allows you to see what nodes are executing right now and how they interact, just like the example above. 
+
+To open rqt_graph, we just type in `rqt_graph` in the terminal. This gives you the global overview on nodes that are running at the time. 
+
+# Turtlesim
+
+To start turtlesim, we have to type the command: 
+
+![image.png](ROS2%20Tools%201fdda1631051807bbb78f381031e69da/image%202.png)
+
+```bash
+ros2 run turtlesim turtlesim_node
+# This is to get the window with a turtle
+ros2 run turtlesim turtle_teleop_key
+# This allows us to control the turtle on the previous window
+```
