@@ -1,0 +1,253 @@
+# Workspace, package and nodes
+
+Status: Completed
+Start Date: May 23, 2025
+Completion Date: May 24, 2025
+Resources: Udemy ROS2 for beginners chapter 3
+Time Spent (hrs): 2
+
+# WORKSPACE
+
+A ROS2 workspace is some place where you will write, install and compile all code for ROS2 applications. 
+
+### How to create a workspace
+
+```bash
+# Go back to home directory and create another directory called ros2_ws (by default)
+# The newly created ROS2 directory is under your home directory
+
+cd 
+mkdir ros2_ws
+
+cd ros2_ws/
+mkdir src 
+# src stands for source
+# Here's all you need to initialise your ws
+# You can use ls to check what stuffs do you have under the dir
+
+# Under the ros2_ws (not under src!), we can use colcon (build tool) - translator & organiser
+colcon build 
+# What colcon build does is that it
+
+# 1. Create 3 new dir under the ws - build (store immediate files),
+# install (contain ready to use version of packages) and log (keeps track of what happened during build process)
+
+# 2. Looks in your src folder
+# Then compiles and processes each pacakge, which handles dependencies between packages automatically
+
+# Without colcon build, packages will just be source code sitting in folders, but not usable by ROS2
+sudo apt install ros-dev-tools # make sure you have this package
+
+# Under the install dir, you will find the setup.bash file. This is something you need to call everytime
+# So for convenience, we have to type in 
+echo "source ~/ros2_ws/install/setup.bash" >> ~/.bashrc
+# You can do the same by adding the line "source ~/ros2_ws/install/setup.bash" (opening the file with gedit)
+# (gedit ~/.bashrc)
+# At the last line of the ~/.bashrc file, after the line "source /opt/ros/humble/setup.bash" 
+```
+
+# PACKAGES
+
+Think of them as folder structures with organised code files under the ROS2 workspace that we’ve just created. 
+
+### How to create packages under ROS2 WS
+
+```bash
+cd ros2_ws/src/ 
+# Remember to create all packages under the src dir
+
+ros2 pkg create firstpackage --build-type amend_python --dependencies rclpy
+# Amend is the build system (as in colcon is the build tool)
+# rclpy is the python client library for ROS2
+
+colcon build --packages-select firstpackage
+# Select only firstpackage to be built
+```
+
+Now, open vscode under the src directory. Your package should be ready by then.
+
+Make sure you have added the rclpy dependency as that provides all the Python APIs and tools you would need to manage the ROS2 nodes. 
+
+<aside>
+❓
+
+Now, why do we need to rebuild again using colcon build? 
+
+Because when we make changes to the code in the `src/` directory, those changes only exists in your source files - and we need to process and copy them to the `install/` directory where ROS2 actually looks for your executable code. Hence, we have to do colcon build again, or `colcon build --symlink-install`, which prevent you to rebuild every time by creating symbolic links that point back to your original source files.
+
+</aside>
+
+You will still need to run **`colcon build`** again (apart from using symlink) if you:
+
+- Add new executables to **`setup.py`**
+- Modify **`package.xml`** dependencies
+- Make changes to message or service definitions
+- Have any C/C++ code that requires compilation
+
+# NODES
+
+For nodes, they are some sort of fundamental building block that performs one logical task or computation. Think of it as a single Python program (well, if you write in Python) that is designed to handle a specific responsibility in your robot system, e.g. processing camera image. 
+
+(Implemented as Python classes - ROS2 uses OOP for creating nodes)
+
+### Creating minimal node
+
+```bash
+cd ros2_ws/src/firstpackage
+# Inside firstpackage, you should see a folder that has the same name as firstpackage
+# We have to enter that folder
+cd firstpackage/
+# We will create our first node under
+# cd ros2_ws/src/firstpackage/firstpackage
+touch my_first_node.py
+```
+
+```python
+#!/usr/bin/env python3
+import rclpy
+# You need this line for all python nodes
+from rclpy.node import Node
+
+def main(args = None): 
+	rclpy.init(args = args)
+	node = Node("test") 
+	node.get_logger().info("hello world ros2 here")
+	rclpy.shutdown()
+	
+if __name__ == "__main__": 
+	main()
+```
+
+When you call **`rclpy.init()`**, you're not starting a VM - you're **initialising the ROS2 communication infrastructure.** This sets up:
+
+- **Discovery mechanisms** - how nodes find each other on the network
+- **Communication protocols** - how nodes will send messages
+- **Memory management** - allocating resources for ROS2 operations
+- **Signal handling** - proper cleanup when programs are interrupted
+
+Think of it like **connecting to the internet** - before your computer can browse websites, it needs to establish network connections, get an IP address, etc. Similarly, before your node can communicate with other ROS2 nodes, it needs to join the "ROS2 network."
+
+Similarly, you would have to disconnect from the internet using `rclpy.shutdown()` . Otherwise there might be memory leak, or other nodes thinking your node is still alive. 
+
+**`node.get_logger().info("hello world ros2 here")`** is just your program saying **"Hey, I'm alive and running!"** and recording that fact for you to see.
+
+After creating the node, we can see that it will turn off immediately. To stop that, we can add one more line
+
+```python
+rclpy.spin(node)
+```
+
+This keeps the node alive until you press `ctrl c` → exit from the program. 
+
+We will also have to create an executable under the `setup.py` file. You should see
+
+```python
+setup(
+	...
+	entry_points = {
+		'console_scripts': []
+		} 
+)
+```
+
+Enter `nodeone = firstpacakge.my_first_node:main` 
+
+nodeone → executable name
+
+firstpackage → package name 
+
+my_first_node → file name 
+
+main → the function in the python file that you want to call
+
+Another neater way to write node with Python OOP is:
+
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+
+class MyNode (Node): 
+
+    def __init__(self):
+        super().__init__("test")
+        self.get_logger().info("hello world")
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = MyNode()
+    rclpy.spin(node)
+    rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
+```
+
+This is the template that we can write for any node. 
+
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+
+class MyNode (Node): 
+
+    def __init__(self):
+        super().__init__("test")
+        self.counter_ = 0
+        self.get_logger().info("hello")
+        self.create_timer(0.5, self.timer_callback)
+
+    def timer_callback(self):
+        self.get_logger().info("hello world" + str(self.counter_))
+        self.counter_ += 1
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = MyNode()
+    rclpy.spin(node)
+    rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
+
+# Just a more interesting version with timer
+```
+
+### Run the minimal node
+
+```bash
+cd
+source ~/.bashrc
+# type ros2 run [package name] [executable name]
+ro2 run firstpackage nodeone
+
+# If you need to update your code, go back to ros2_ws level and do colcon build
+```
+
+OR, just press the run button on vscode.
+
+# Templates for python ROS2 node
+
+```python
+OOP Python Code Template for Nodes
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+ 
+ 
+class MyCustomNode(Node): # MODIFY NAME
+    def __init__(self):
+        super().__init__("node_name") # MODIFY NAME
+ 
+ 
+def main(args=None):
+    rclpy.init(args=args)
+    node = MyCustomNode() # MODIFY NAME
+    rclpy.spin(node)
+    rclpy.shutdown()
+ 
+ 
+if __name__ == "__main__":
+    main()
+```
