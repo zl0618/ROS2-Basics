@@ -173,6 +173,15 @@ Note that the subscriber can connect to the publisher because they share the sam
 
 They are actually decoupled, meaning that the publisher doesn’t know who’s listening, and the subscriber doesn’t know who’s sending. 
 
+Another simpler way of making a minimal subscriber is to type
+
+```bash
+ros2 topic list
+# To find what topics are there to subscribe
+ros2 topic echo /[name of topic]
+# This creates a simple subscriber that displays what the publisher has sent out
+```
+
 # ROS2 network
 
 ROS2 nodes need to be on the **same physical network**, which can be:
