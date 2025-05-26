@@ -1,0 +1,210 @@
+# Communication system
+
+Status: In Progress
+Start Date: May 25, 2025
+Resources: Udemy ROS2 for beginners chapter 5
+Time Spent (hrs): 5
+
+# Topics
+
+A Topic is a named communication channel in ROS2 through which nodes can publish and subscribe to messages, hence exchanging data with each other. We need to use topics when we want to send out a one-way message (publisher to subscriber), and the message sending is anonymous. 
+
+# Publisher
+
+To create a publisher, we can create a file under `[package name]/[package name]` .
+
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from example_interfaces.msg import String
+
+class RobotNewsStationNode(Node): 
+    def __init__(self): 
+        super().__init__("robot_news_station") 
+        self.publisher_ = self.create_publisher(String, "robot_news", 10)
+        # The name of the topic has to start with letters
+        self.robot_name = "C3P0"
+        self.timer_ = self.create_timer(1.0, self.publish_news)  # 1 second timer
+        self.get_logger().info("Robot News Station Node has been started.")
+
+    def publish_news(self):
+        msg = String()
+        msg.data = "hello this is " + self.robot_name + " from the station"
+        self.publisher_.publish(msg)
+        
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = RobotNewsStationNode() 
+    rclpy.spin(node)
+    rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
+
+```
+
+Remember to add back the dependency of example_interfaces in the `package.xml` as we didn’t include that when we create the package. We also have to add back the executable of this file to the `setup.py` .
+
+```markup
+<depend>example_interfaces</depend>
+```
+
+```python
+"robot_news_station = my_py_pkg.robot_news_station:main",
+# Don't forget the comma
+```
+
+Now, here are some key setup lines that we have to be aware of. 
+
+```python
+self.publisher_ = self.create_publisher(String, "robot_news", 10)
+self.timer_ = self.create_timer(1.0, self.publish_news)
+# The timer is created to call the publish_news function every 1 second
+# Making this a continuous broadcaster. 
+```
+
+**`self.publisher_`**: This creates an instance variable that stores the publisher object. The underscore at the end is a Python convention indicating it's a "private" attribute meant for internal use within the class.
+
+**`self.create_publisher()`**: This is a method inherited from the **`Node`** class that creates a new publisher. It's the standard ROS2 way to set up message broadcasting capabilities.
+
+**`String`**: This specifies the message type that will be published. It comes from **`example_interfaces.msg import String`** and defines the structure of data being sent. All messages on this topic must be of this exact type, and the subscriber should receive the same type of message. 
+
+**`"robot_news"`**: This is the topic name - the communication channel identifier. Any node that wants to receive these messages must subscribe to this exact topic name. Topic names are case-sensitive strings.
+
+**`10`**: This is the **Quality of Service (QoS) queue size**. It determines how many messages can be buffered if subscribers can't process them fast enough. If the publisher sends messages faster than subscribers can handle them, the oldest messages get discarded once the queue fills up.
+
+```python
+def publish_news(self):
+    msg = String()
+    msg.data = "hello this is " + self.robot_name + " from the station"
+    self.publisher_.publish(msg)
+```
+
+This function creates a new **`String`** message, fills it with text content, and publishes it to the topic. Each time it's called (every second), it sends the same message.
+
+<aside>
+❓
+
+Are we using one class’s object inside another class for self.create_publisher?
+
+What's happening here is:
+
+1. **`self.create_publisher()`** returns a **publisher object** (an instance of ROS2's internal **`Publisher`** class)
+2. **`self.publisher_`** stores this publisher object as an attribute of your **`RobotNewsStationNode`** class
+3. So yes, you're storing "class 1 stuff" (a Publisher object) inside "class 2" (your RobotNewsStationNode)
+
+### Inheritance and composition
+
+“is-a” relationship vs “has-a” relationship
+
+This pattern follows the principle that "composition offers more flexibility than inheritance". Your node doesn't need to BE a publisher - it just needs to HAVE publishing capabilities. The ROS2 framework creates specialised publisher objects that handle all the complex networking, serialisation, and communication details, while your node simply uses them.
+
+This separation of concerns makes the code more modular and maintainable. Your node focuses on the business logic (what to publish and when), while the publisher object handles the technical details of actually sending messages over the network.
+
+</aside>
+
+# Subscriber
+
+A **subscriber** is the listening/receiving end of the ROS2 topic system. While publishers broadcast messages, subscribers listen for those messages and react when they arrive. Think of it like:
+
+- **Publisher** = Radio station broadcasting news
+- **Subscriber** = Your radio tuned in to that station, ready to play whatever comes through
+
+The subscriber sits quietly waiting, and whenever a message arrives on the topic it's listening to, it automatically calls a function (callback) to handle that message.
+
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from example_interfaces.msg import String
+
+class SmartphoneNode(Node):
+    def __init__(self): 
+        super().__init__("smartphone") 
+        self.subscriber_ = self.create_subscription(String, "robot_news", self.callback_robot_news, 10)
+        # Remember to use the same topic name as the publisher
+        self.get_logger().info("Smartphone Node has been started. Waiting for robot news...")
+
+    def callback_robot_news(self, msg: String): 
+        self.get_logger().info(f"Received news: {msg.data}")
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = SmartphoneNode() 
+    rclpy.spin(node)
+    rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
+```
+
+Similarly, we have to add the executable
+
+```python
+"smartphone = my_py_pkg.smartphone:main",
+# Don't forget the comma
+```
+
+Some important lines to note is that: 
+
+```python
+self.subscriber_ = self.create_subscription(
+String, "robot_news", self.callback_robot_news, 10)
+```
+
+This is the **most important line**. Let's break it down:
+
+- **`self.subscriber_`**: Stores the subscriber object (just like you stored the publisher)
+- **`String`**: The message type it expects (must match the publisher's type)
+- **`"robot_news"`**: The topic name to listen to (must match the publisher's topic name)
+- **`self.callback_robot_news`**: The function to call when a message arrives (no parentheses!)
+- **`10`**: Queue size for buffering incoming messages
+
+```python
+def callback_robot_news(self, msg: String): 
+    self.get_logger().info(f"Received news: {msg.data}")
+```
+
+This is the **callback function** - it gets called automatically every time a message arrives. The **`msg`** parameter contains the actual message data that was published.
+
+Note that the subscriber can connect to the publisher because they share the same **TOPIC NAME, MESSAGE TYPE (DATA TYPE) AND ROS2 NETWORK**.
+
+They are actually decoupled, meaning that the publisher doesn’t know who’s listening, and the subscriber doesn’t know who’s sending. 
+
+# ROS2 network
+
+ROS2 nodes need to be on the **same physical network**, which can be:
+
+- **Same WiFi network**: All devices connected to the same router/WiFi
+- **Same wired network**: Devices connected via Ethernet cables to the same router
+- **Mixed**: Some on WiFi, some wired, but all through the same router
+
+The key is they need to be able to **ping each other**. You can test this with **`ping <other_computer_ip>`**.
+
+### **ROS2 Domain Layer**
+
+Even on the same physical network, ROS2 adds another layer called **ROS_DOMAIN_ID**:
+
+```bash
+export ROS_DOMAIN_ID=42
+```
+
+**All ROS2 nodes must use the same domain ID to talk to each other.** Think of it like channels on a walkie-talkie - everyone needs to be on the same channel to communicate.
+
+### **How It Works**
+
+ROS2 uses something called **DDS (Data Distribution Service)** that automatically discovers nodes on the same network. When you start your publisher and subscriber:
+
+1. **Physical network**: Both computers can reach each other (same WiFi/Ethernet)
+2. **Domain ID**: Both use the same **`ROS_DOMAIN_ID`**
+3. **Auto-discovery**: ROS2 automatically finds matching topic names and message types
+4. **Communication**: Your subscriber starts receiving the publisher's messages!
+
+### **What If They're Not on the Same Network?**
+
+For different networks (like across the internet), you'd need more advanced setups like:
+
+- **VPN**: Creates a virtual network connecting distant machines.
+- **Discovery servers**: Special ROS2 configuration for remote communication
